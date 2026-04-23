@@ -1,0 +1,544 @@
+<div class="space-y-5">
+  <!-- Header -->
+  <div class="flex items-center justify-between">
+    <div>
+      <h1 class="text-2xl font-semibold text-[#1A3A5C]">Inventario</h1>
+      <p class="text-base font-medium text-gray-600">Gestión de productos y lotes</p>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <mat-tab-group (selectedIndexChange)="onTabChange($event)" class="mt-4">
+    <!-- Tab: Productos -->
+    <mat-tab label="Productos">
+      <div class="p-6">
+        <!-- Stock Bajo Warning Banner -->
+        @if (stockBajo().length > 0) {
+          <div class="mb-4 flex items-center gap-3 rounded-xl border border-red-200 bg-red-50 p-4">
+            <mat-icon class="text-red-600">warning</mat-icon>
+            <div>
+              <p class="font-medium text-red-800">{{ stockBajo().length }} productos con stock bajo</p>
+              <p class="text-sm text-red-600">Revisar y reabastecer los productos marcados</p>
+            </div>
+          </div>
+        }
+
+        <!-- Action Buttons -->
+        <div class="mb-4 flex justify-end">
+          <button
+            type="button"
+            (click)="openProductoModal()"
+            class="bg-[#1A3A5C] text-white px-5 py-2.5 rounded-lg font-medium hover:bg-[#152E4A] transition-colors duration-200 flex items-center gap-2"
+          >
+            <mat-icon class="text-sm">add_circle</mat-icon>
+            Crear Producto
+          </button>
+        </div>
+
+        <!-- Loading State -->
+        @if (loading()) {
+          <div class="space-y-4">
+            @for (_ of [1, 2, 3, 4, 5]; track _) {
+              <div class="animate-pulse rounded-xl bg-white p-6 shadow-sm">
+                <div class="flex items-center gap-4">
+                  <div class="h-4 w-32 rounded bg-gray-200"></div>
+                  <div class="h-4 w-24 rounded bg-gray-200"></div>
+                  <div class="h-4 w-20 rounded bg-gray-200"></div>
+                  <div class="h-4 w-16 rounded bg-gray-200"></div>
+                  <div class="h-4 w-16 rounded bg-gray-200"></div>
+                  <div class="h-4 w-20 rounded bg-gray-200"></div>
+                  <div class="h-8 w-24 rounded bg-gray-200"></div>
+                </div>
+              </div>
+            }
+          </div>
+        } @else if (productos().length === 0) {
+          <!-- Empty State -->
+          <div class="flex flex-col items-center justify-center bg-white rounded-xl p-6 shadow-sm border border-gray-100 py-16">
+            <div class="w-12 h-12 text-gray-300 mx-auto mb-4 flex items-center justify-center">
+              <mat-icon class="text-5xl">inventory_2</mat-icon>
+            </div>
+            <h3 class="text-base text-gray-500 mb-1">No hay productos</h3>
+            <p class="text-sm text-gray-400">Crea tu primer producto para comenzar</p>
+          </div>
+        } @else {
+          <!-- Table -->
+          <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            <div class="overflow-x-auto">
+              <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                  <tr>
+                    <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Nombre</th>
+                    <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Categoría</th>
+                    <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">U. Medida</th>
+                    <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Temp Min</th>
+                    <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Temp Max</th>
+                    <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Stock Min</th>
+                    <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Precio</th>
+                    <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200 bg-white">
+                  @for (producto of productos(); track producto.idProducto) {
+                    <tr class="border-b border-gray-100 hover:bg-gray-50 transition-colors duration-150"
+                      [class.bg-red-50]="producto.stockMinimo > 0 && stockBajo().some(p => p.idProducto === producto.idProducto)">
+                      <td class="whitespace-nowrap px-5 py-3 text-sm font-medium text-gray-800">{{ producto.nombre }}</td>
+                      <td class="whitespace-nowrap px-5 py-3 text-sm text-gray-700 capitalize">{{ producto.categoria }}</td>
+                      <td class="whitespace-nowrap px-5 py-3 text-sm text-gray-700">{{ producto.unidadMedida }}</td>
+                      <td class="whitespace-nowrap px-5 py-3 text-sm text-gray-700">{{ producto.tempMinC }}°C</td>
+                      <td class="whitespace-nowrap px-5 py-3 text-sm text-gray-700">{{ producto.tempMaxC }}°C</td>
+                      <td class="whitespace-nowrap px-5 py-3 text-sm text-gray-700">{{ producto.stockMinimo }}</td>
+                      <td class="whitespace-nowrap px-5 py-3 text-sm text-gray-700">{{ producto.precioUnitario | currency:'COP':'symbol' }}</td>
+                      <td class="whitespace-nowrap px-5 py-3 text-sm">
+                        <button
+                          type="button"
+                          (click)="verLotesFIFO(producto)"
+                          class="bg-white text-gray-700 border border-gray-300 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors"
+                        >
+                          Ver lotes FIFO
+                        </button>
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          </div>
+        }
+      </div>
+    </mat-tab>
+
+    <!-- Tab: Lotes -->
+    <mat-tab label="Lotes">
+      <div class="p-6">
+        <!-- Proximos a Vencer Panel -->
+        <div class="mb-4 rounded-xl border border-orange-200 bg-orange-50 p-4">
+          <div class="flex items-start gap-3">
+            <mat-icon class="text-orange-600">schedule</mat-icon>
+            <div class="flex-1">
+              <h4 class="font-medium text-orange-800">Próximos a vencer</h4>
+              <p class="mb-2 text-sm text-orange-600">Mostrar lotes que vencen en los próximos días</p>
+              <div class="flex items-center gap-2">
+                <input
+                  type="number"
+                  [value]="diasVencer()"
+                  (change)="onDiasVencerChange($event)"
+                  min="1"
+                  class="w-20 border border-gray-300 rounded-lg px-4 py-2.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#1A3A5C] focus:border-transparent transition duration-150"
+                />
+                <button
+                  type="button"
+                  (click)="loadProximosVencer()"
+                  class="bg-[#2E7D52] text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-[#256643] transition-colors duration-200"
+                >
+                  Buscar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Action Button -->
+        <div class="mb-4 flex justify-end">
+          <button
+            type="button"
+            (click)="openLoteModal()"
+            class="bg-[#1A3A5C] text-white px-5 py-2.5 rounded-lg font-medium hover:bg-[#152E4A] transition-colors duration-200 flex items-center gap-2"
+          >
+            <mat-icon class="text-sm">add_circle</mat-icon>
+            Ingresar Lote
+          </button>
+        </div>
+
+        <!-- Loading State -->
+        @if (loadingProximos()) {
+          <div class="space-y-4">
+            @for (_ of [1, 2, 3, 4, 5]; track _) {
+              <div class="animate-pulse rounded-xl bg-white p-6 shadow-sm">
+                <div class="flex items-center gap-4">
+                  <div class="h-4 w-24 rounded bg-gray-200"></div>
+                  <div class="h-4 w-32 rounded bg-gray-200"></div>
+                  <div class="h-4 w-16 rounded bg-gray-200"></div>
+                  <div class="h-4 w-24 rounded bg-gray-200"></div>
+                  <div class="h-4 w-24 rounded bg-gray-200"></div>
+                  <div class="h-6 w-20 rounded bg-gray-200"></div>
+                </div>
+              </div>
+            }
+          </div>
+        } @else if (lotes().length === 0) {
+          <!-- Empty State -->
+          <div class="flex flex-col items-center justify-center bg-white rounded-xl p-6 shadow-sm border border-gray-100 py-16">
+            <div class="w-12 h-12 text-gray-300 mx-auto mb-4 flex items-center justify-center">
+              <mat-icon class="text-5xl">inventory</mat-icon>
+            </div>
+            <h3 class="text-base text-gray-500 mb-1">No hay lotes</h3>
+            <p class="text-sm text-gray-400">No se encontraron lotes próximos a vencer</p>
+          </div>
+        } @else {
+          <!-- Lotes Table -->
+          <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            <div class="overflow-x-auto">
+              <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                  <tr>
+                    <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">N° Lote</th>
+                    <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Producto</th>
+                    <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Cantidad</th>
+                    <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Fecha Ingreso</th>
+                    <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Fecha Vencimiento</th>
+                    <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Estado</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200 bg-white">
+                  @for (lote of lotes(); track lote.idLote) {
+                    <tr class="border-b border-gray-100 hover:bg-gray-50 transition-colors duration-150">
+                      <td class="whitespace-nowrap px-5 py-3 text-sm font-medium text-gray-800">{{ lote.numeroLote }}</td>
+                      <td class="whitespace-nowrap px-5 py-3 text-sm text-gray-700">{{ lote.nombreProducto }}</td>
+                      <td class="whitespace-nowrap px-5 py-3 text-sm text-gray-700">{{ lote.cantidadActual }}</td>
+                      <td class="whitespace-nowrap px-5 py-3 text-sm text-gray-700">{{ lote.fechaIngreso | date:'dd/MM/yyyy' }}</td>
+                      <td class="whitespace-nowrap px-5 py-3 text-sm text-gray-700">{{ lote.fechaVencimiento | date:'dd/MM/yyyy' }}</td>
+                      <td class="whitespace-nowrap px-5 py-3">
+                        <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium
+                          {{ lote.estado === 'disponible' ? 'bg-emerald-100 text-emerald-800' : '' }}
+                          {{ lote.estado === 'proxima-vencer' ? 'bg-orange-100 text-orange-800' : '' }}
+                          {{ lote.estado === 'vencido' ? 'bg-red-100 text-red-800' : '' }}">
+                          {{ lote.estado | titlecase }}
+                        </span>
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          </div>
+        }
+      </div>
+    </mat-tab>
+  </mat-tab-group>
+</div>
+
+<!-- FIFO Panel Modal -->
+@if (showFifoPanel()) {
+  <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" (click)="closeFifoPanel()">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-2xl mx-4 p-7" (click)="$event.stopPropagation()">
+      <div class="flex items-center justify-between mb-6">
+        <h2 class="text-xl font-semibold text-gray-800">Lotes FIFO - {{ fifoLoteProducto() }}</h2>
+        <button type="button" (click)="closeFifoPanel()" class="text-gray-400 hover:text-gray-600">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+
+      @if (loadingFifo()) {
+        <div class="flex justify-center py-8">
+          <mat-spinner diameter="40"></mat-spinner>
+        </div>
+      } @else if (fifoLotes().length === 0) {
+        <p class="py-8 text-center text-gray-500">No hay lotes disponibles</p>
+      } @else {
+        <div class="space-y-2">
+          @for (lote of fifoLotes(); track lote.idLote; let idx = $index) {
+            <div class="rounded-xl border border-gray-200 p-4 hover:bg-gray-50 transition-colors duration-150 border-l-4 border-l-[#2E7D52]">
+              <div class="flex items-center justify-between">
+                <div>
+                  <p class="font-medium text-gray-800">Lote: {{ lote.numeroLote }}</p>
+                  <p class="text-sm text-gray-500">Cantidad: {{ lote.cantidadActual }}</p>
+                </div>
+                <div class="text-right">
+                  <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium
+                    {{ lote.estado === 'disponible' ? 'bg-emerald-100 text-emerald-800' : '' }}
+                    {{ lote.estado === 'proxima-vencer' ? 'bg-orange-100 text-orange-800' : '' }}">
+                    {{ lote.estado | titlecase }}
+                  </span>
+                  <p class="mt-1 text-xs text-gray-500">{{ lote.fechaVencimiento | date:'dd/MM/yyyy' }}</p>
+                </div>
+              </div>
+            </div>
+          }
+        </div>
+      }
+    </div>
+  </div>
+}
+
+<!-- Modal: Crear Producto -->
+@if (showProductoModal()) {
+  <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" (click)="closeProductoModal()">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg mx-4 p-7" (click)="$event.stopPropagation()">
+      <div class="flex items-center justify-between mb-6">
+        <h2 class="text-xl font-semibold text-gray-800">Crear Producto</h2>
+        <button type="button" (click)="closeProductoModal()" class="text-gray-400 hover:text-gray-600">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+
+      <form (ngSubmit)="submitProducto()" class="space-y-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-600 mb-1">Proveedor *</label>
+          <select
+            [value]="formIdProveedor()"
+            (change)="onNitInput('formIdProveedor', $event)"
+            required
+            [disabled]="loadingProveedores()"
+            class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#1A3A5C] focus:border-transparent transition duration-150 disabled:cursor-not-allowed disabled:bg-gray-100"
+          >
+            <option value="">
+              @if (loadingProveedores()) {
+                Cargando proveedores...
+              } @else {
+                Seleccionar proveedor
+              }
+            </option>
+            @for (proveedor of proveedores(); track proveedor.idProveedor) {
+              <option [value]="proveedor.idProveedor">
+                {{ proveedor.razonSocial }} (NIT: {{ proveedor.nit }})
+              </option>
+            }
+          </select>
+          @if (!loadingProveedores() && proveedores().length === 0) {
+            <p class="text-xs text-red-600 mt-1">No se pudieron cargar proveedores. Intenta de nuevo.</p>
+          }
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-600 mb-1">Nombre *</label>
+          <input
+            type="text"
+            [value]="formNombre()"
+            (input)="onNitInput('formNombre', $event)"
+            required
+            class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#1A3A5C] focus:border-transparent transition duration-150"
+            placeholder="Nombre del producto"
+          />
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-600 mb-1">Categoría *</label>
+          <select
+            [value]="formCategoria()"
+            (change)="onNitInput('formCategoria', $event)"
+            required
+            class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#1A3A5C] focus:border-transparent transition duration-150"
+          >
+            <option value="">Seleccionar categoría</option>
+            @for (cat of categorias; track cat) {
+              <option [value]="cat">{{ cat | titlecase }}</option>
+            }
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-600 mb-1">Unidad de Medida *</label>
+          <input
+            type="text"
+            [value]="formUnidadMedida()"
+            (input)="onNitInput('formUnidadMedida', $event)"
+            required
+            class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#1A3A5C] focus:border-transparent transition duration-150"
+            placeholder="kg, L, unidad"
+          />
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-600 mb-1">Temp. Min (°C)</label>
+            <input
+              type="number"
+              [value]="formTempMinC()"
+              (input)="onNitInput('formTempMinC', $event)"
+              class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#1A3A5C] focus:border-transparent transition duration-150"
+              placeholder="0"
+            />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-600 mb-1">Temp. Max (°C)</label>
+            <input
+              type="number"
+              [value]="formTempMaxC()"
+              (input)="onNitInput('formTempMaxC', $event)"
+              class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#1A3A5C] focus:border-transparent transition duration-150"
+              placeholder="0"
+            />
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-600 mb-1">Stock Mínimo *</label>
+          <input
+            type="number"
+            [value]="formStockMinimo()"
+            (input)="onNitInput('formStockMinimo', $event)"
+            required
+            min="0"
+            class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#1A3A5C] focus:border-transparent transition duration-150"
+            placeholder="0"
+          />
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-600 mb-1">Precio Unitario *</label>
+          <input
+            type="number"
+            [value]="formPrecioUnitario()"
+            (input)="onNitInput('formPrecioUnitario', $event)"
+            required
+            min="1"
+            class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#1A3A5C] focus:border-transparent transition duration-150"
+            placeholder="0"
+          />
+        </div>
+
+        <div class="flex justify-end gap-3 mt-6">
+          <button
+            type="button"
+            (click)="closeProductoModal()"
+            class="bg-white text-gray-700 border border-gray-300 px-5 py-2.5 rounded-lg font-medium hover:bg-gray-50 transition-colors"
+          >
+            Cancelar
+          </button>
+          <button
+            type="submit"
+            [disabled]="!isProductoFormValid() || loadingProveedores() || proveedores().length === 0"
+            class="bg-[#1A3A5C] text-white px-5 py-2.5 rounded-lg font-medium hover:bg-[#152E4A] transition-colors duration-200 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Crear Producto
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+}
+
+<!-- Modal: Ingresar Lote -->
+@if (showLoteModal()) {
+  <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" (click)="closeLoteModal()">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg mx-4 p-7" (click)="$event.stopPropagation()">
+      <div class="flex items-center justify-between mb-6">
+        <h2 class="text-xl font-semibold text-gray-800">Ingresar Lote</h2>
+        <button type="button" (click)="closeLoteModal()" class="text-gray-400 hover:text-gray-600">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+
+      <form (ngSubmit)="submitLote()" class="space-y-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-600 mb-1">Producto *</label>
+          <select
+            [value]="formLoteIdProducto()"
+            (change)="onLoteInput('formLoteIdProducto', $event)"
+            required
+            [disabled]="loadingProductosLookup()"
+            class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#1A3A5C] focus:border-transparent transition duration-150 disabled:cursor-not-allowed disabled:bg-gray-100"
+          >
+            <option value="">
+              @if (loadingProductosLookup()) {
+                Cargando productos...
+              } @else {
+                Seleccionar producto
+              }
+            </option>
+            @for (producto of productos(); track producto.idProducto) {
+              <option [value]="producto.idProducto">{{ producto.nombre }} ({{ producto.categoria | titlecase }})</option>
+            }
+          </select>
+          @if (!loadingProductosLookup() && productos().length === 0) {
+            <p class="text-xs text-red-600 mt-1">No hay productos disponibles para asociar.</p>
+          }
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-600 mb-1">Proveedor *</label>
+          <select
+            [value]="formLoteIdProveedor()"
+            (change)="onLoteInput('formLoteIdProveedor', $event)"
+            required
+            [disabled]="loadingProveedores()"
+            class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#1A3A5C] focus:border-transparent transition duration-150 disabled:cursor-not-allowed disabled:bg-gray-100"
+          >
+            <option value="">
+              @if (loadingProveedores()) {
+                Cargando proveedores...
+              } @else {
+                Seleccionar proveedor
+              }
+            </option>
+            @for (proveedor of proveedores(); track proveedor.idProveedor) {
+              <option [value]="proveedor.idProveedor">
+                {{ proveedor.razonSocial }} (NIT: {{ proveedor.nit }})
+              </option>
+            }
+          </select>
+          @if (!loadingProveedores() && proveedores().length === 0) {
+            <p class="text-xs text-red-600 mt-1">No se pudieron cargar proveedores. Intenta de nuevo.</p>
+          }
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-600 mb-1">Número de Lote *</label>
+          <input
+            type="text"
+            [value]="formLoteNumero()"
+            (input)="onLoteInput('formLoteNumero', $event)"
+            required
+            class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#1A3A5C] focus:border-transparent transition duration-150"
+            placeholder="LOT-001"
+          />
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-600 mb-1">Cantidad Actual *</label>
+          <input
+            type="number"
+            [value]="formLoteCantidad()"
+            (input)="onLoteInput('formLoteCantidad', $event)"
+            required
+            min="1"
+            class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#1A3A5C] focus:border-transparent transition duration-150"
+          />
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-600 mb-1">Fecha de Ingreso *</label>
+          <input
+            type="date"
+            [value]="formLoteFechaIngreso()"
+            (input)="onLoteInput('formLoteFechaIngreso', $event)"
+            required
+            class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#1A3A5C] focus:border-transparent transition duration-150"
+          />
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-600 mb-1">Fecha de Vencimiento *</label>
+          <input
+            type="date"
+            [value]="formLoteFechaVencimiento()"
+            (input)="onLoteInput('formLoteFechaVencimiento', $event)"
+            required
+            class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#1A3A5C] focus:border-transparent transition duration-150"
+          />
+          @if (isFechaVencimientoInvalid()) {
+            <p class="text-xs text-red-600 mt-1">La fecha de vencimiento debe ser posterior a la fecha de ingreso</p>
+          }
+        </div>
+
+        <div class="flex justify-end gap-3 mt-6">
+          <button
+            type="button"
+            (click)="closeLoteModal()"
+            class="bg-white text-gray-700 border border-gray-300 px-5 py-2.5 rounded-lg font-medium hover:bg-gray-50 transition-colors"
+          >
+            Cancelar
+          </button>
+          <button
+            type="submit"
+            [disabled]="!isLoteFormValid() || loadingProductosLookup() || loadingProveedores() || productos().length === 0 || proveedores().length === 0"
+            class="bg-[#1A3A5C] text-white px-5 py-2.5 rounded-lg font-medium hover:bg-[#152E4A] transition-colors duration-200 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Ingresar Lote
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+}

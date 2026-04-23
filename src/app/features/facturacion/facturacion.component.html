@@ -1,0 +1,194 @@
+<div class="space-y-5">
+  <!-- Header -->
+  <div>
+    <h1 class="text-2xl font-semibold text-[#1A3A5C]">Facturación</h1>
+    <p class="text-base font-medium text-gray-600">Gestión de facturas y pagos</p>
+  </div>
+
+  <!-- Search -->
+  <div class="flex items-center gap-3">
+    <div class="flex-1">
+      <label class="block text-sm font-medium text-gray-600 mb-1">Pedido</label>
+      <select
+        [value]="idPedido()"
+        (change)="onIdPedidoChange($event)"
+        [disabled]="loadingPedidos()"
+        class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#1A3A5C] focus:border-transparent transition duration-150 disabled:cursor-not-allowed disabled:bg-gray-100"
+      >
+        <option value="">
+          @if (loadingPedidos()) {
+            Cargando facturas...
+          } @else {
+            Seleccionar factura
+          }
+        </option>
+        @for (factura of facturasDisponibles(); track factura.idPedido) {
+          <option [value]="factura.idPedido">
+            {{ factura.numeroFactura }}
+          </option>
+        }
+      </select>
+      @if (!loadingPedidos() && facturasDisponibles().length === 0) {
+        <p class="text-xs text-red-600 mt-1">No hay facturas pendientes disponibles para seleccionar.</p>
+      }
+    </div>
+    <button
+      type="button"
+      (click)="buscarFactura()"
+      [disabled]="searching() || loadingPedidos() || facturasDisponibles().length === 0 || !idPedido()"
+      class="mt-6 bg-[#1A3A5C] text-white px-5 py-2.5 rounded-lg text-sm font-medium shadow-sm transition-colors duration-200 hover:bg-[#152E4A] disabled:cursor-not-allowed disabled:opacity-50"
+    >
+      @if (searching()) {
+        <mat-spinner diameter="16" class="inline"></mat-spinner>
+      } @else {
+        Buscar
+      }
+    </button>
+  </div>
+
+  <!-- No factura found -->
+  @if (factura() === null && idPedido()) {
+    <div class="rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 p-8 text-center">
+      <div class="w-12 h-12 text-gray-300 mx-auto mb-4 flex items-center justify-center">
+        <mat-icon class="text-5xl">receipt_long</mat-icon>
+      </div>
+      <h3 class="text-base text-gray-500 mb-1">No se encontró factura</h3>
+      <p class="text-sm text-gray-400">No existe factura para el pedido #{{ idPedido() }}</p>
+      <button
+        type="button"
+        (click)="generarFactura()"
+        [disabled]="loading() || !idPedido()"
+        class="mt-4 bg-[#1A3A5C] text-white px-5 py-2.5 rounded-lg text-sm font-medium shadow-sm transition-colors duration-200 hover:bg-[#152E4A] disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        @if (loading()) {
+          <mat-spinner diameter="16" class="inline"></mat-spinner>
+        } @else {
+          Generar Factura
+        }
+      </button>
+    </div>
+  }
+
+  <!-- Factura Card -->
+  @if (factura(); as f) {
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+      <div class="mb-4 flex items-center justify-between">
+        <h2 class="text-xl font-semibold text-[#1A3A5C]">Factura {{ f.numeroFactura }}</h2>
+        <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium capitalize
+          {{ f.estado === 'pendiente' ? 'bg-amber-100 text-amber-800' : '' }}
+          {{ f.estado === 'pagada' ? 'bg-emerald-100 text-emerald-800' : '' }}
+          {{ f.estado === 'cancelada' ? 'bg-red-100 text-red-800' : '' }}">
+          {{ f.estado | titlecase }}
+        </span>
+      </div>
+
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div class="rounded-xl bg-gray-50 p-4">
+          <p class="text-xs text-gray-500">Total</p>
+          <p class="text-base font-semibold text-gray-800">{{ f.total | currency:'COP':'symbol' }}</p>
+        </div>
+        <div class="rounded-xl bg-gray-50 p-4">
+          <p class="text-xs text-gray-500">Método de Pago</p>
+          <p class="text-base font-semibold text-gray-800 capitalize">{{ f.metodoPago || 'No registrado' }}</p>
+        </div>
+        <div class="rounded-xl bg-gray-50 p-4">
+          <p class="text-xs text-gray-500">Fecha de Emisión</p>
+          <p class="text-base font-semibold text-gray-800">{{ f.fechaEmision | date:'dd/MM/yyyy HH:mm' }}</p>
+        </div>
+        <div class="rounded-xl bg-gray-50 p-4">
+          <p class="text-xs text-gray-500">Fecha de Pago</p>
+          <p class="text-base font-semibold text-gray-800">{{ f.fechaPago ? (f.fechaPago | date:'dd/MM/yyyy HH:mm') : 'Pendiente' }}</p>
+        </div>
+        @if (f.referenciaPago) {
+          <div class="rounded-xl bg-gray-50 p-4">
+            <p class="text-xs text-gray-500">Referencia de Pago</p>
+            <p class="text-base font-semibold text-gray-800">{{ f.referenciaPago }}</p>
+          </div>
+        }
+        <div class="rounded-xl bg-gray-50 p-4">
+          <p class="text-xs text-gray-500">ID Pedido</p>
+          <p class="text-base font-semibold text-gray-800">#{{ f.idPedido }}</p>
+        </div>
+      </div>
+
+      <!-- Actions -->
+      @if (f.estado === 'pendiente') {
+        <div class="mt-6 flex justify-end">
+          <button
+            type="button"
+            (click)="openPagoModal()"
+            class="bg-[#2E7D52] text-white px-5 py-2.5 rounded-lg text-sm font-medium shadow-sm hover:bg-[#256643] transition-colors duration-200"
+          >
+            Registrar Pago
+          </button>
+        </div>
+      }
+    </div>
+  }
+</div>
+
+<!-- Modal: Registrar Pago -->
+@if (showPagoModal()) {
+  <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" (click)="closePagoModal()">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg mx-4 p-7" (click)="$event.stopPropagation()">
+      <div class="flex items-center justify-between mb-6">
+        <h2 class="text-xl font-semibold text-gray-800">Registrar Pago</h2>
+        <button type="button" (click)="closePagoModal()" class="text-gray-400 hover:text-gray-600">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+
+      <form (ngSubmit)="submitPago()" class="space-y-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-600 mb-1">Método de Pago *</label>
+          <select
+            [value]="formMetodoPago()"
+            (change)="onMetodoPagoChange($event)"
+            required
+            class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#1A3A5C] focus:border-transparent transition duration-150"
+          >
+            <option value="">Seleccionar método</option>
+            @for (metodo of metodosPago; track metodo) {
+              <option [value]="metodo">{{ metodo | titlecase }}</option>
+            }
+          </select>
+        </div>
+
+        @if (requiereReferencia()) {
+          <div>
+            <label class="block text-sm font-medium text-gray-600 mb-1">Referencia de Pago *</label>
+            <input
+              type="text"
+              [value]="formReferenciaPago()"
+              (change)="onReferenciaChange($event)"
+              required
+              class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#1A3A5C] focus:border-transparent transition duration-150"
+              placeholder="Número de referencia"
+            />
+          </div>
+        }
+
+        <div class="flex justify-end gap-3 mt-6">
+          <button
+            type="button"
+            (click)="closePagoModal()"
+            class="bg-white text-gray-700 border border-gray-300 px-5 py-2.5 rounded-lg font-medium hover:bg-gray-50 transition-colors"
+          >
+            Cancelar
+          </button>
+          <button
+            type="submit"
+            [disabled]="!isPagoFormValid() || loading()"
+            class="bg-[#2E7D52] text-white px-5 py-2.5 rounded-lg font-medium hover:bg-[#256643] transition-colors duration-200 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            @if (loading()) {
+              <mat-spinner diameter="16" class="inline"></mat-spinner>
+            } @else {
+              Registrar Pago
+            }
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+}

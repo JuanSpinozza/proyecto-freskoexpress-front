@@ -1,0 +1,294 @@
+<div class="space-y-5">
+  <!-- Header -->
+  <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div>
+      <h1 class="text-2xl font-semibold text-[#1A3A5C]">Sensores</h1>
+      <p class="text-base font-medium text-gray-600">Monitoreo de alertas y lecturas</p>
+    </div>
+    @if (esAdminOp()) {
+      <button
+        type="button"
+        (click)="openLecturaForm()"
+        class="bg-[#1A3A5C] text-white px-5 py-2.5 rounded-lg font-medium hover:bg-[#152E4A] transition-colors duration-200 flex items-center gap-2"
+      >
+        <mat-icon class="text-sm">add_circle</mat-icon>
+        Ingresar Lectura
+      </button>
+    }
+  </div>
+
+  <!-- Tabs -->
+  <mat-tab-group (selectedIndexChange)="activeTab.set($event)" class="mt-4">
+    <!-- Tab: Alertas Activas -->
+    <mat-tab label="Alertas Activas">
+      <div class="p-6">
+        <!-- Auto-refresh indicator -->
+        <div class="mb-4 flex items-center gap-2 text-sm text-gray-500">
+          <mat-spinner diameter="16" class="inline"></mat-spinner>
+          <span>Actualización automática cada 30s</span>
+        </div>
+
+        @if (alertas().length === 0) {
+          <!-- Empty State -->
+          <div class="flex flex-col items-center justify-center bg-white rounded-xl p-6 shadow-sm border border-gray-100 py-16">
+            <div class="w-12 h-12 text-[#2E7D52] mx-auto mb-4 flex items-center justify-center">
+              <mat-icon class="text-5xl">check_circle</mat-icon>
+            </div>
+            <h3 class="text-base text-gray-500 mb-1">Sin alertas activas</h3>
+            <p class="text-sm text-gray-400">Todos los sensores operando normalmente</p>
+          </div>
+        } @else {
+          <!-- Alert Cards -->
+          <div class="space-y-4">
+            @for (alerta of alertas(); track alerta.idAlerta) {
+              <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5 hover:shadow-md transition-all duration-200">
+                <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div class="flex-1">
+                    <div class="mb-2 flex items-center gap-3">
+                      <mat-icon
+                        class="text-xl"
+                        [class.text-orange-600]="alerta.severidad === 'advertencia'"
+                        [class.text-red-600]="alerta.severidad === 'critica'"
+                      >
+                        {{ alerta.severidad === 'critica' ? 'error' : 'warning' }}
+                      </mat-icon>
+                      <h3 class="text-base font-medium text-[#1A3A5C]">{{ alerta.tipo | titlecase }}</h3>
+                      <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium capitalize
+                        {{ alerta.severidad === 'advertencia' ? 'bg-orange-100 text-orange-800' : '' }}
+                        {{ alerta.severidad === 'critica' ? 'bg-red-100 text-red-800' : '' }}">
+                        {{ alerta.severidad | titlecase }}
+                      </span>
+                    </div>
+                    <p class="text-sm text-gray-700">{{ alerta.mensaje }}</p>
+                    <div class="mt-2 flex items-center gap-4 text-xs text-gray-500">
+                      <span>
+                        <mat-icon class="inline text-sm align-middle">directions_car</mat-icon>
+                        Vehículo: {{ alerta.idVehiculo ?? 'N/A' }}
+                      </span>
+                      <span>
+                        <mat-icon class="inline text-sm align-middle">schedule</mat-icon>
+                        {{ alerta.fechaAlerta | date:'dd/MM/yyyy HH:mm:ss' }}
+                      </span>
+                    </div>
+                  </div>
+
+                  @if (!alerta.reconocida) {
+                    <button
+                      type="button"
+                      (click)="reconocerAlerta(alerta)"
+                      [disabled]="loading()"
+                      class="bg-[#1A3A5C] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#152E4A] transition-colors duration-200 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      Reconocer
+                    </button>
+                  }
+                </div>
+              </div>
+            }
+          </div>
+        }
+      </div>
+    </mat-tab>
+
+    <!-- Tab: Historial por Vehículo -->
+    <mat-tab label="Historial por Vehículo">
+      <div class="p-6">
+        <!-- Search -->
+        <div class="mb-4 flex items-center gap-3">
+          <div class="flex-1">
+            <label class="block text-sm font-medium text-gray-600 mb-1">ID Vehículo</label>
+            <input
+              type="number"
+              [value]="idVehiculoBusqueda()"
+              (change)="onIdVehiculoChange($event)"
+              (keyup.enter)="buscarHistorial()"
+              min="1"
+              class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#1A3A5C] focus:border-transparent transition duration-150"
+              placeholder="Ingrese ID del vehículo"
+            />
+          </div>
+          <button
+            type="button"
+            (click)="buscarHistorial()"
+            [disabled]="historialLoading()"
+            class="mt-6 bg-[#1A3A5C] text-white px-5 py-2.5 rounded-lg text-sm font-medium shadow-sm transition-colors duration-200 hover:bg-[#152E4A] disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Buscar
+          </button>
+        </div>
+
+        <!-- Historial Table -->
+        @if (historialAlertas().length > 0) {
+          <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            <div class="overflow-x-auto">
+              <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                  <tr>
+                    <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Tipo</th>
+                    <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Severidad</th>
+                    <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Mensaje</th>
+                    <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Fecha</th>
+                    <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Estado</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200 bg-white">
+                  @for (alerta of historialAlertas(); track alerta.idAlerta) {
+                    <tr class="border-b border-gray-100 hover:bg-gray-50 transition-colors duration-150">
+                      <td class="whitespace-nowrap px-5 py-3 text-sm font-medium text-gray-800">{{ alerta.tipo | titlecase }}</td>
+                      <td class="whitespace-nowrap px-5 py-3">
+                        <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium capitalize
+                          {{ alerta.severidad === 'advertencia' ? 'bg-orange-100 text-orange-800' : '' }}
+                          {{ alerta.severidad === 'critica' ? 'bg-red-100 text-red-800' : '' }}">
+                          {{ alerta.severidad | titlecase }}
+                        </span>
+                      </td>
+                      <td class="px-5 py-3 text-sm text-gray-700">{{ alerta.mensaje }}</td>
+                      <td class="whitespace-nowrap px-5 py-3 text-sm text-gray-700">{{ alerta.fechaAlerta | date:'dd/MM/yyyy HH:mm' }}</td>
+                      <td class="whitespace-nowrap px-5 py-3 text-sm">
+                        @if (alerta.reconocida) {
+                          <span class="text-[#2E7D52]">Reconocida</span>
+                        } @else {
+                          <span class="text-orange-600">Pendiente</span>
+                        }
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          </div>
+        } @else if (idVehiculoBusqueda()) {
+          <div class="flex flex-col items-center justify-center bg-white rounded-xl p-6 shadow-sm border border-gray-100 py-16">
+            <div class="w-12 h-12 text-gray-300 mx-auto mb-4 flex items-center justify-center">
+              <mat-icon class="text-5xl">history</mat-icon>
+            </div>
+            <h3 class="text-base text-gray-500 mb-1">Sin historial</h3>
+            <p class="text-sm text-gray-400">No se encontraron alertas para el vehículo #{{ idVehiculoBusqueda() }}</p>
+          </div>
+        }
+      </div>
+    </mat-tab>
+  </mat-tab-group>
+</div>
+
+<!-- Modal: Ingresar Lectura -->
+@if (showLecturaForm()) {
+  <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" (click)="closeLecturaForm()">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg mx-4 p-7" (click)="$event.stopPropagation()">
+      <div class="flex items-center justify-between mb-6">
+        <h2 class="text-xl font-semibold text-gray-800">Ingresar Lectura</h2>
+        <button type="button" (click)="closeLecturaForm()" class="text-gray-400 hover:text-gray-600">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+
+      @if (backendErrorBadge()) {
+        <div class="inline-flex w-full items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+          <mat-icon class="text-base">error</mat-icon>
+          <span>{{ backendErrorBadge() }}</span>
+        </div>
+      }
+
+      <form (submit)="submitLectura($event)" novalidate class="space-y-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-600 mb-1">Vehículo *</label>
+          <select
+            [value]="formIdVehiculo()"
+            (change)="onFormIdVehiculoChange($event)"
+            required
+            [disabled]="loadingVehiculos()"
+            class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#1A3A5C] focus:border-transparent transition duration-150 disabled:cursor-not-allowed disabled:bg-gray-100"
+          >
+            <option value="">
+              @if (loadingVehiculos()) {
+                Cargando vehículos...
+              } @else {
+                Seleccionar vehículo
+              }
+            </option>
+            @for (vehiculo of vehiculos(); track vehiculo.idVehiculo) {
+              <option [value]="vehiculo.idVehiculo">
+                {{ vehiculo.placa || vehiculo.nombre || ('Vehículo #' + vehiculo.idVehiculo) }}
+              </option>
+            }
+          </select>
+          @if (!loadingVehiculos() && vehiculos().length === 0) {
+            <p class="text-xs text-red-600 mt-1">No se pudieron cargar vehículos.</p>
+          }
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-600 mb-1">Ruta (opcional)</label>
+          <select
+            [value]="formIdRuta()"
+            (change)="onFormIdRutaChange($event)"
+            [disabled]="loadingRutas()"
+            class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#1A3A5C] focus:border-transparent transition duration-150 disabled:cursor-not-allowed disabled:bg-gray-100"
+          >
+            <option value="">
+              @if (loadingRutas()) {
+                Cargando rutas...
+              } @else {
+                Sin ruta asociada
+              }
+            </option>
+            @for (ruta of rutasDisponibles(); track ruta.idRuta) {
+              <option [value]="ruta.idRuta">
+                Ruta #{{ ruta.idRuta }} - {{ ruta.placaVehiculo }} - {{ ruta.nombreConductor }}
+              </option>
+            }
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-600 mb-1">Temperatura (°C) *</label>
+          <input
+            type="number"
+            step="0.1"
+            [value]="formTemperaturaC()"
+            (change)="onFormTemperaturaChange($event)"
+            required
+            class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#1A3A5C] focus:border-transparent transition duration-150"
+            placeholder="-5.0"
+          />
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-600 mb-1">Humedad (%) *</label>
+          <input
+            type="number"
+            step="0.1"
+            [value]="formHumedadPct()"
+            (change)="onFormHumedadChange($event)"
+            required
+            min="0"
+            max="100"
+            class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#1A3A5C] focus:border-transparent transition duration-150"
+            placeholder="65.0"
+          />
+        </div>
+
+        <div class="flex justify-end gap-3 mt-6">
+          <button
+            type="button"
+            (click)="closeLecturaForm()"
+            class="bg-white text-gray-700 border border-gray-300 px-5 py-2.5 rounded-lg font-medium hover:bg-gray-50 transition-colors"
+          >
+            Cancelar
+          </button>
+          <button
+            type="submit"
+            [disabled]="!isLecturaFormValid() || loading() || loadingVehiculos() || vehiculos().length === 0"
+            class="bg-[#1A3A5C] text-white px-5 py-2.5 rounded-lg font-medium hover:bg-[#152E4A] transition-colors duration-200 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            @if (loading()) {
+              <mat-spinner diameter="16" class="inline"></mat-spinner>
+            } @else {
+              Registrar Lectura
+            }
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+}

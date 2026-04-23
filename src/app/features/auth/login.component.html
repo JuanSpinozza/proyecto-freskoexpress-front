@@ -1,0 +1,177 @@
+<div class="flex min-h-screen w-full items-center justify-center bg-[#1A3A5C] px-4 py-8">
+  <div class="w-full max-w-md">
+    <!-- Login Card -->
+    <div class="rounded-2xl bg-white p-8 shadow-xl">
+      <!-- Logo and Title -->
+      <div class="mb-8 text-center">
+        <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-xl bg-[#1A3A5C] mb-4">
+          <mat-icon class="text-white text-2xl">ac_unit</mat-icon>
+        </div>
+        <h1 class="text-2xl font-semibold text-[#1A3A5C]">FresKoExpress</h1>
+        <p class="mt-2 text-sm text-gray-500">
+          @if (isRegisterMode()) {
+            Crear cuenta
+          } @else {
+            Iniciar sesión
+          }
+        </p>
+      </div>
+
+      <!-- Login Form -->
+      <form (submit)="onSubmit(); $event.preventDefault()" novalidate class="space-y-4">
+        @if (isRegisterMode()) {
+          <div>
+            <label for="nombre" class="block text-sm font-medium text-gray-600 mb-1">Nombre</label>
+            <input
+              id="nombre"
+              type="text"
+              [value]="nombre()"
+              (input)="onNombreInput($event)"
+              autocomplete="name"
+              required
+              [disabled]="loading()"
+              class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1A3A5C] focus:border-transparent transition duration-150 disabled:cursor-not-allowed disabled:opacity-50"
+              placeholder="Nombre completo"
+            />
+            @if (nombre() && !isNameValid()) {
+              <p class="text-xs text-red-600 mt-1">Mínimo 3 caracteres</p>
+            }
+          </div>
+        }
+
+        <!-- Email Input -->
+        <div>
+          <label for="correo" class="block text-sm font-medium text-gray-600 mb-1">
+            Correo electrónico
+          </label>
+          <input
+            id="correo"
+            type="text"
+            [value]="correo()"
+            (input)="onCorreoInput($event)"
+            autocomplete="email"
+            required
+            [disabled]="loading()"
+            class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1A3A5C] focus:border-transparent transition duration-150 disabled:cursor-not-allowed disabled:opacity-50"
+            placeholder="correo@ejemplo.com"
+          />
+          @if (correo() && !isEmailValid()) {
+            <p class="text-xs text-red-600 mt-1">Ingrese un correo válido</p>
+          }
+        </div>
+
+        <!-- Password Input -->
+        <div>
+          <label for="contrasena" class="block text-sm font-medium text-gray-600 mb-1">
+            Contraseña
+          </label>
+          <input
+            id="contrasena"
+            type="password"
+            [value]="contrasena()"
+            (input)="onContrasenaInput($event)"
+            autocomplete="current-password"
+            required
+            [disabled]="loading()"
+            class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1A3A5C] focus:border-transparent transition duration-150 disabled:cursor-not-allowed disabled:opacity-50"
+            placeholder="****"
+          />
+          @if (contrasena() && !isPasswordValid()) {
+            <p class="text-xs text-red-600 mt-1">Mínimo 3 caracteres</p>
+          }
+        </div>
+
+        @if (isRegisterMode()) {
+          <div>
+            <label for="rol" class="block text-sm font-medium text-gray-600 mb-1">Rol</label>
+            <select
+              id="rol"
+              [value]="rol()"
+              (change)="onRolChange($event)"
+              [disabled]="loading()"
+              class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#1A3A5C] focus:border-transparent transition duration-150 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              @for (role of roles; track role.value) {
+                <option [value]="role.value">{{ role.label }}</option>
+              }
+            </select>
+          </div>
+
+          <div>
+            <label for="licencia" class="block text-sm font-medium text-gray-600 mb-1">Licencia</label>
+            <input
+              id="licencia"
+              type="text"
+              [value]="licencia()"
+              (input)="onLicenciaInput($event)"
+              required
+              [disabled]="loading()"
+              class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1A3A5C] focus:border-transparent transition duration-150 disabled:cursor-not-allowed disabled:opacity-50"
+              placeholder="Número de licencia"
+            />
+            @if (licencia() && !isLicenseValid()) {
+              <p class="text-xs text-red-600 mt-1">Mínimo 3 caracteres</p>
+            }
+          </div>
+
+          <div>
+            <label for="tipoLicencia" class="block text-sm font-medium text-gray-600 mb-1">
+              Tipo de licencia
+            </label>
+            <input
+              id="tipoLicencia"
+              type="text"
+              [value]="tipoLicencia()"
+              (input)="onTipoLicenciaInput($event)"
+              required
+              [disabled]="loading()"
+              class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1A3A5C] focus:border-transparent transition duration-150 disabled:cursor-not-allowed disabled:opacity-50"
+              placeholder="Ejemplo: C1"
+            />
+            @if (tipoLicencia() && !isTipoLicenciaValid()) {
+              <p class="text-xs text-red-600 mt-1">Mínimo 3 caracteres</p>
+            }
+          </div>
+        }
+
+        <!-- Submit Button -->
+        <button
+          type="submit"
+          [disabled]="isDisabled()"
+          class="w-full bg-[#1A3A5C] text-white px-5 py-2.5 rounded-lg font-medium hover:bg-[#152E4A] transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-[#1A3A5C] focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          @if (loading()) {
+            <span class="flex items-center justify-center gap-2">
+              <mat-icon class="animate-spin">progress_activity</mat-icon>
+              @if (isRegisterMode()) {
+                Registrando...
+              } @else {
+                Iniciando sesión...
+              }
+            </span>
+          } @else {
+            @if (isRegisterMode()) {
+              Registrarse
+            } @else {
+              Iniciar sesión
+            }
+          }
+        </button>
+
+        <button
+          type="button"
+          (click)="toggleMode()"
+          [disabled]="loading()"
+          class="w-full rounded-lg border border-[#1A3A5C] px-5 py-2.5 text-sm font-medium text-[#1A3A5C] hover:bg-[#1A3A5C]/5 focus:outline-none focus:ring-2 focus:ring-[#1A3A5C] focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          @if (isRegisterMode()) {
+            Ya tengo cuenta
+          } @else {
+            Crear cuenta nueva
+          }
+        </button>
+      </form>
+
+    </div>
+  </div>
+</div>

@@ -1,0 +1,392 @@
+<div class="space-y-5">
+  <!-- Header -->
+  <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div>
+      <h1 class="text-2xl font-semibold text-[#1A3A5C]">Pedidos</h1>
+      <p class="text-base font-medium text-gray-600">{{ esCliente() ? 'Historial de pedidos' : 'Gestión de pedidos' }}</p>
+    </div>
+    @if (puedeCrearPedido()) {
+      <button
+        type="button"
+        (click)="openCreateModal()"
+        class="bg-[#1A3A5C] text-white px-5 py-2.5 rounded-lg font-medium hover:bg-[#152E4A] transition-colors duration-200 flex items-center gap-2"
+      >
+        <mat-icon class="text-sm">add_circle</mat-icon>
+        Crear Pedido
+      </button>
+    }
+  </div>
+
+  @if (esAdminOp()) {
+    <!-- Admin Tabs -->
+    <div class="flex flex-wrap gap-2">
+      @for (tab of ['todos', 'confirmado', 'preparacion', 'en_ruta', 'entregado', 'fallido']; track tab) {
+        <button
+          type="button"
+          (click)="setTabFromString(tab)"
+          class="rounded-full px-4 py-2 text-sm font-medium transition-all duration-200 capitalize"
+          [class.bg-[#1A3A5C]]="activeAdminTab() === tab"
+          [class.text-white]="activeAdminTab() === tab"
+          [class.bg-white]="activeAdminTab() !== tab"
+          [class.text-gray-600]="activeAdminTab() !== tab"
+          [class.hover:bg-gray-100]="activeAdminTab() !== tab"
+          [class.border]="activeAdminTab() !== tab"
+          [class.border-gray-200]="activeAdminTab() !== tab"
+        >
+          {{ tab }}
+        </button>
+      }
+      <button
+        type="button"
+        (click)="cargarSinRuta()"
+        class="rounded-full px-4 py-2 text-sm font-medium transition-all duration-200"
+        [class.bg-amber-600]="activeAdminTab() === 'sin-ruta'"
+        [class.text-white]="activeAdminTab() === 'sin-ruta'"
+        [class.bg-white]="activeAdminTab() !== 'sin-ruta'"
+        [class.text-gray-600]="activeAdminTab() !== 'sin-ruta'"
+        [class.hover:bg-gray-100]="activeAdminTab() !== 'sin-ruta'"
+        [class.border]="activeAdminTab() !== 'sin-ruta'"
+        [class.border-gray-200]="activeAdminTab() !== 'sin-ruta'"
+      >
+        Sin ruta
+      </button>
+    </div>
+  }
+
+  <!-- Loading State -->
+  @if (loading()) {
+    <div class="space-y-4">
+      @for (_ of [1, 2, 3, 4, 5]; track _) {
+        <div class="animate-pulse rounded-xl bg-white p-6 shadow-sm">
+          <div class="flex items-center gap-4">
+            <div class="h-4 w-24 rounded bg-gray-200"></div>
+            <div class="h-4 w-32 rounded bg-gray-200"></div>
+            <div class="h-4 w-24 rounded bg-gray-200"></div>
+            <div class="h-6 w-20 rounded bg-gray-200"></div>
+            <div class="h-8 w-16 rounded bg-gray-200"></div>
+          </div>
+        </div>
+      }
+    </div>
+  } @else {
+    <!-- Empty State -->
+    @if ((activeAdminTab() === 'sin-ruta' ? sinRutaPedidos() : filteredPedidos()).length === 0) {
+      <div class="flex flex-col items-center justify-center bg-white rounded-xl p-6 shadow-sm border border-gray-100 py-16">
+        <div class="w-12 h-12 text-gray-300 mx-auto mb-4 flex items-center justify-center">
+          <mat-icon class="text-5xl">shopping_cart</mat-icon>
+        </div>
+        <h3 class="text-base text-gray-500 mb-1">No hay pedidos</h3>
+        <p class="text-sm text-gray-400">
+          @if (activeAdminTab() === 'sin-ruta') {
+            No hay pedidos sin asignar a ruta
+          } @else {
+            No se encontraron pedidos
+          }
+        </p>
+      </div>
+    } @else {
+      <!-- Table -->
+      <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+              <tr>
+                <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">ID</th>
+                @if (esAdminOp()) {
+                  <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Cliente</th>
+                }
+                <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Fecha Pedido</th>
+                <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Entrega Req</th>
+                <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Total</th>
+                <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Estado</th>
+                @if (esAdminOp()) {
+                  <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Acciones</th>
+                }
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-200 bg-white">
+              @for (pedido of activeAdminTab() === 'sin-ruta' ? sinRutaPedidos() : filteredPedidos(); track pedido.idPedido) {
+                <tr class="border-b border-gray-100 hover:bg-gray-50 transition-colors duration-150">
+                  <td class="whitespace-nowrap px-5 py-3 text-sm font-medium text-gray-800">#{{ pedido.idPedido }}</td>
+                  @if (esAdminOp()) {
+                    <td class="whitespace-nowrap px-5 py-3 text-sm text-gray-700">{{ pedido.razonSocialCliente }}</td>
+                  }
+                  <td class="whitespace-nowrap px-5 py-3 text-sm text-gray-700">{{ pedido.fechaPedido | date:'dd/MM/yyyy' }}</td>
+                  <td class="whitespace-nowrap px-5 py-3 text-sm text-gray-700">{{ pedido.fechaEntregaReq | date:'dd/MM/yyyy' }}</td>
+                  <td class="whitespace-nowrap px-5 py-3 text-sm text-gray-700">{{ pedido.total | currency:'COP':'symbol' }}</td>
+                  <td class="whitespace-nowrap px-5 py-3">
+                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium capitalize
+                      {{ pedido.estado === 'pendiente' ? 'bg-amber-100 text-amber-800' : '' }}
+                      {{ pedido.estado === 'confirmado' ? 'bg-blue-100 text-blue-800' : '' }}
+                      {{ pedido.estado === 'preparacion' ? 'bg-blue-100 text-blue-800' : '' }}
+                      {{ pedido.estado === 'en_ruta' ? 'bg-orange-100 text-orange-800' : '' }}
+                      {{ pedido.estado === 'entregado' ? 'bg-emerald-100 text-emerald-800' : '' }}
+                      {{ pedido.estado === 'fallido' ? 'bg-red-100 text-red-800' : '' }}">
+                      {{ pedido.estado | titlecase }}
+                    </span>
+                  </td>
+                  @if (esAdminOp()) {
+                    <td class="whitespace-nowrap px-5 py-3 text-sm">
+                      <div class="flex items-center gap-2">
+                        @if (pedido.estado === 'pendiente') {
+                          <button
+                            type="button"
+                            (click)="setCambiarEstado(pedido, 'confirmado')"
+                            class="bg-[#1A3A5C] text-white px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-[#152E4A] transition-colors"
+                          >
+                            Confirmar
+                          </button>
+                        }
+                        @if (pedido.estado === 'confirmado') {
+                          <button
+                            type="button"
+                            (click)="setCambiarEstado(pedido, 'preparacion')"
+                            class="bg-[#2E7D52] text-white px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-[#256643] transition-colors"
+                          >
+                            Preparar
+                          </button>
+                        }
+                        @if (pedido.estado === 'preparacion') {
+                          <button
+                            type="button"
+                            (click)="setCambiarEstado(pedido, 'en_ruta')"
+                            class="bg-orange-600 text-white px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-orange-700 transition-colors"
+                          >
+                            En ruta
+                          </button>
+                        }
+                        @if (pedido.estado === 'en_ruta') {
+                          <button
+                            type="button"
+                            (click)="setCambiarEstado(pedido, 'entregado')"
+                            class="bg-[#2E7D52] text-white px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-[#256643] transition-colors"
+                          >
+                            Entregado
+                          </button>
+                        }
+                        <button
+                          type="button"
+                          (click)="setCambiarEstado(pedido, 'fallido')"
+                          class="bg-red-600 text-white px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-red-700 transition-colors"
+                        >
+                          Fallido
+                        </button>
+                      </div>
+                    </td>
+                  }
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+    }
+  }
+</div>
+
+<!-- Cliente Create Modal (Multi-step) -->
+@if (showCreateModal()) {
+  <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" (click)="closeCreateModal()">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-2xl mx-4 p-7" (click)="$event.stopPropagation()">
+      <div class="flex items-center justify-between mb-6">
+        <h2 class="text-xl font-semibold text-gray-800">Crear Pedido</h2>
+        <button type="button" (click)="closeCreateModal()" class="text-gray-400 hover:text-gray-600">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+
+      <!-- Stepper indicators -->
+      <mat-stepper [linear]="false" [selectedIndex]="createStep()" class="mb-6 bg-transparent">
+        <mat-step label="Fecha y horario"></mat-step>
+        <mat-step label="Items"></mat-step>
+        <mat-step label="Confirmar"></mat-step>
+      </mat-stepper>
+
+      <!-- Step 1: Fecha y Horario -->
+      @if (createStep() === 0) {
+        <div class="space-y-4">
+          @if (esAdmin()) {
+            <div>
+              <label class="block text-sm font-medium text-gray-600 mb-1">Cliente *</label>
+              <select
+                [value]="formIdCliente()"
+                (change)="onClienteChange($event)"
+                [disabled]="loadingClientes()"
+                class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#1A3A5C] focus:border-transparent transition duration-150 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <option value="">
+                  @if (loadingClientes()) {
+                    Cargando clientes...
+                  } @else {
+                    Seleccionar cliente
+                  }
+                </option>
+                @for (cliente of clientes(); track cliente.idCliente) {
+                  <option [value]="cliente.idCliente">{{ getClienteLabel(cliente) }}</option>
+                }
+              </select>
+              @if (!loadingClientes() && clientes().length === 0) {
+                <p class="text-xs text-red-600 mt-1">No se encontraron clientes disponibles.</p>
+              }
+            </div>
+          }
+
+          <div>
+            <label class="block text-sm font-medium text-gray-600 mb-1">Fecha de entrega requerida *</label>
+            <input
+              type="date"
+              [value]="formFechaEntrega()"
+              (change)="onFechaChange($event)"
+              required
+              class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#1A3A5C] focus:border-transparent transition duration-150"
+            />
+          </div>
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-600 mb-1">Horario inicio</label>
+              <input
+                type="time"
+                [value]="formHoraInicio()"
+                (change)="onHoraInicioChange($event)"
+                class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#1A3A5C] focus:border-transparent transition duration-150"
+              />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-600 mb-1">Horario fin</label>
+              <input
+                type="time"
+                [value]="formHoraFin()"
+                (change)="onHoraFinChange($event)"
+                class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#1A3A5C] focus:border-transparent transition duration-150"
+              />
+            </div>
+          </div>
+        </div>
+      }
+
+      <!-- Step 2: Items -->
+      @if (createStep() === 1) {
+        <div class="space-y-4">
+          @if (loadingProductos()) {
+            <div class="flex justify-center py-8">
+              <mat-spinner diameter="40"></mat-spinner>
+            </div>
+          } @else {
+            @for (item of formItems(); track $index) {
+              <div class="flex items-center gap-3 rounded-xl border border-gray-200 p-4">
+                <select
+                  class="flex-1 border border-gray-300 rounded-lg px-4 py-2.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#1A3A5C] focus:border-transparent transition duration-150"
+                  (change)="onItemProductoChange($index, $event)"
+                >
+                  <option value="">Seleccionar producto</option>
+                  @for (prod of productos(); track prod.idProducto) {
+                    <option [value]="prod.idProducto" [selected]="item.idProducto === prod.idProducto">
+                      {{ prod.nombre }} - {{ prod.precioUnitario | currency:'COP':'symbol' }}
+                    </option>
+                  }
+                </select>
+                <input
+                  type="number"
+                  [value]="item.cantidad"
+                  (change)="onItemCantidadChange($index, $event)"
+                  min="1"
+                  class="w-20 border border-gray-300 rounded-lg px-2 py-2.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#1A3A5C] focus:border-transparent transition duration-150"
+                />
+                <button
+                  type="button"
+                  (click)="removeItem($index)"
+                  class="rounded-lg p-2 text-red-600 hover:bg-red-50 transition-colors"
+                >
+                  <mat-icon class="text-base">delete</mat-icon>
+                </button>
+              </div>
+            }
+            <button
+              type="button"
+              (click)="addItem()"
+              class="bg-white text-gray-700 border border-gray-300 px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors flex items-center gap-2"
+            >
+              <mat-icon class="text-base">add</mat-icon>
+              Agregar item
+            </button>
+          }
+        </div>
+      }
+
+      <!-- Step 3: Review -->
+      @if (createStep() === 2) {
+        <div class="space-y-4">
+          @if (esAdmin()) {
+            <div class="rounded-xl bg-gray-50 p-4">
+              <h4 class="font-medium text-gray-800">Cliente</h4>
+              <p class="text-sm text-gray-700">
+                @if (clientes().find(c => c.idCliente === +formIdCliente()); as clienteSeleccionado) {
+                  {{ getClienteLabel(clienteSeleccionado) }}
+                } @else {
+                  Sin seleccionar
+                }
+              </p>
+            </div>
+          }
+
+          <div class="rounded-xl bg-gray-50 p-4">
+            <h4 class="font-medium text-gray-800">Fecha de entrega</h4>
+            <p class="text-sm text-gray-700">{{ formFechaEntrega() }}</p>
+            <h4 class="mt-3 font-medium text-gray-800">Horario de entrega</h4>
+            <p class="text-sm text-gray-700">{{ formHoraInicio() }} - {{ formHoraFin() }}</p>
+          </div>
+
+          <div class="rounded-xl bg-gray-50 p-4">
+            <h4 class="font-medium text-gray-800">Items del pedido</h4>
+            @for (item of formItems().filter(i => i.idProducto > 0); track $index) {
+              <div class="flex items-center justify-between border-b border-gray-200 py-2 last:border-0">
+                <div>
+                  <p class="text-sm font-medium text-gray-800">{{ getProductoName(item.idProducto) }}</p>
+                  <p class="text-xs text-gray-500">Cantidad: {{ item.cantidad }}</p>
+                </div>
+                <p class="text-sm font-medium text-gray-800">
+                  {{ ((productos().find(p => p.idProducto === item.idProducto)?.precioUnitario ?? 0) * item.cantidad) | currency:'COP':'symbol' }}
+                </p>
+              </div>
+            }
+            <div class="mt-3 flex justify-between border-t border-gray-200 pt-3">
+              <span class="font-medium text-gray-800">Total</span>
+              <span class="font-semibold text-[#1A3A5C]">{{ createTotal() | currency:'COP':'symbol' }}</span>
+            </div>
+          </div>
+        </div>
+      }
+
+      <!-- Navigation buttons -->
+      <div class="flex justify-end gap-3 mt-6">
+        @if (createStep() > 0) {
+          <button
+            type="button"
+            (click)="prevStep()"
+            class="bg-white text-gray-700 border border-gray-300 px-5 py-2.5 rounded-lg font-medium hover:bg-gray-50 transition-colors"
+          >
+            Anterior
+          </button>
+        }
+        @if (createStep() < 2) {
+          <button
+            type="button"
+            (click)="nextStep()"
+            class="bg-[#1A3A5C] text-white px-5 py-2.5 rounded-lg font-medium hover:bg-[#152E4A] transition-colors duration-200"
+          >
+            Siguiente
+          </button>
+        } @else {
+          <button
+            type="button"
+            (click)="submitCreate()"
+            [disabled]="!isFormValid()"
+            class="bg-[#2E7D52] text-white px-5 py-2.5 rounded-lg font-medium hover:bg-[#256643] transition-colors duration-200 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Confirmar Pedido
+          </button>
+        }
+      </div>
+    </div>
+  </div>
+}

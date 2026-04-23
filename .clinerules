@@ -1,0 +1,32 @@
+# FresKoExpress — Angular 21 Frontend
+
+## Stack
+- Angular 21, zoneless, Signal Forms, standalone components
+- Angular Material + SCSS
+- All state: Angular Signals only
+- All forms: Signal Forms only (no FormBuilder, no FormGroup)
+- No RxJS for state management
+- Base API URL: http://localhost:8080
+
+## Context handoff rules
+- When context usage exceeds 50%, finish the current file completely
+- Then propose new_task with:
+  * Files completed so far
+  * Next pending task
+  * Stack constraints above
+  * Any decisions made (interfaces, folder structure)
+
+## Folder structure to maintain
+src/app/
+  core/          (interceptors, guards, auth service)
+  shared/        (components, pipes, models)
+  features/
+    auth/
+    proveedores/
+    inventario/
+    pedidos/
+    rutas/
+    facturacion/
+    sensores/
+    mantenimiento/
+    dashboard/

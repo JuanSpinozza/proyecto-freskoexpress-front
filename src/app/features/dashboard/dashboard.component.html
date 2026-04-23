@@ -1,0 +1,332 @@
+<div class="space-y-5">
+  <!-- Header -->
+  <div>
+    <h1 class="text-2xl font-semibold text-[#1A3A5C] mb-1">
+      @if (esAdminOp()) { Panel de Control }
+      @else if (esConductor()) { Mi Panel }
+      @else if (esCliente()) { Mis Pedidos }
+    </h1>
+    <p class="text-sm text-gray-500 mb-6">
+      @if (esAdminOp()) { Resumen general del sistema de cadena de frio }
+      @else if (esConductor()) { Rutas y alertas asignadas para hoy }
+      @else if (esCliente()) { Historial y estado de tus pedidos }
+    </p>
+  </div>
+
+  <!-- ==================== ADMIN/OPERADOR DASHBOARD ==================== -->
+  @if (esAdminOp()) {
+    <!-- KPI Cards -->
+    <div class="grid grid-cols-4 gap-4 mb-6">
+      @for (kpi of kpis(); track kpi.title; let idx = $index) {
+        <button
+          type="button"
+          (click)="navigateTo(kpi.route)"
+          class="bg-white rounded-xl p-5 shadow-sm border border-gray-100 flex items-center gap-4 hover:shadow-md hover:scale-[1.02] transition-all duration-200 cursor-pointer"
+        >
+          <!-- Icon -->
+          <div class="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
+            [ngClass]="getKpiIconBg(kpi.color)">
+            @if (kpi.loading) {
+              <mat-spinner diameter="20" class="text-white"></mat-spinner>
+            } @else {
+              <mat-icon class="[&.mat-icon]:text-[24px]">{{ kpi.icon }}</mat-icon>
+            }
+          </div>
+          
+          <!-- Content -->
+          <div class="text-left">
+            @if (!kpi.loading) {
+              <p class="text-3xl font-bold text-gray-800">{{ kpi.count }}</p>
+            } @else {
+              <div class="h-9 w-16 animate-pulse rounded bg-gray-200"></div>
+            }
+            <p class="text-sm text-gray-500">{{ kpi.title }}</p>
+          </div>
+        </button>
+      }
+    </div>
+
+    <!-- Charts Row: 5 columns (KPI Chart: 3, Route Status: 2) -->
+    <div class="grid grid-cols-5 gap-4 mb-6">
+      <!-- KPI Bar Chart -->
+      <div class="col-span-3 bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+        <h2 class="text-base font-semibold text-gray-800">Resumen de KPIs</h2>
+        <p class="text-xs text-gray-400 mb-4">Comparativa de indicadores</p>
+        <div class="min-h-[180px]">
+          <canvas baseChart
+            [type]="'bar'"
+            [data]="kpiBarChartData()"
+            [options]="kpiBarChartOptions">
+          </canvas>
+        </div>
+      </div>
+
+      <!-- Route Status Doughnut Chart -->
+      <div class="col-span-2 bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+        <h2 class="text-base font-semibold text-gray-800">Estado de Rutas</h2>
+        <p class="text-xs text-gray-400 mb-4">Distribucion por estado</p>
+        <div class="min-h-[180px]">
+          <canvas baseChart
+            [type]="'doughnut'"
+            [data]="routeStatusChartData()"
+            [options]="routeStatusChartOptions">
+          </canvas>
+        </div>
+        <!-- Legend -->
+        <div class="mt-4 flex flex-wrap gap-3">
+          <span class="flex items-center text-xs text-gray-600">
+            <span class="w-3 h-3 rounded-full bg-gray-400 inline-block mr-1"></span>
+            Planificada
+          </span>
+          <span class="flex items-center text-xs text-gray-600">
+            <span class="w-3 h-3 rounded-full bg-orange-400 inline-block mr-1"></span>
+            En Curso
+          </span>
+          <span class="flex items-center text-xs text-gray-600">
+            <span class="w-3 h-3 rounded-full bg-emerald-500 inline-block mr-1"></span>
+            Completada
+          </span>
+          <span class="flex items-center text-xs text-gray-600">
+            <span class="w-3 h-3 rounded-full bg-red-500 inline-block mr-1"></span>
+            Cancelada
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Today's Routes (full width) -->
+    <div class="col-span-full bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+      <div class="mb-4">
+        <h2 class="text-base font-semibold text-gray-800">Rutas de Hoy</h2>
+        <p class="text-xs text-gray-400">Resumen de rutas programadas</p>
+      </div>
+      
+      @if (rutasLoading()) {
+        <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
+          @for (_ of [1,2,3,4]; track _) {
+            <div class="h-28 w-full bg-gray-100 rounded-xl animate-pulse"></div>
+          }
+        </div>
+      } @else if (rutasHoy().length === 0) {
+        <div class="flex flex-col items-center justify-center py-12 text-center">
+          <svg class="w-12 h-12 text-gray-300 mx-auto mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.149-.504 1.149-1.125v-7.875c0-.621-.528-1.125-1.149-1.125H18" />
+          </svg>
+          <p class="text-gray-500 text-sm">No hay rutas programadas para hoy</p>
+          <p class="text-gray-400 text-xs">Las rutas apareceran cuando sean asignadas</p>
+        </div>
+      } @else {
+        <!-- Routes list -->
+        <div class="space-y-2">
+          @for (ruta of rutasHoy(); track ruta.idRuta) {
+            <div class="flex items-center justify-between bg-white rounded-lg border border-gray-200 p-4 hover:bg-gray-50 transition-colors duration-150">
+              <div class="flex items-center gap-4">
+                <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-[#1A3A5C] text-sm font-bold text-white">
+                  {{ ruta.idRuta }}
+                </div>
+                <div>
+                  <p class="font-medium text-gray-800">{{ ruta.placaVehiculo }}</p>
+                  <p class="text-sm text-gray-500">{{ ruta.nombreConductor }}</p>
+                </div>
+              </div>
+              <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium
+                {{ ruta.estado === 'planificada' ? 'bg-gray-100 text-gray-600' : '' }}
+                {{ ruta.estado === 'en_curso' ? 'bg-orange-100 text-orange-800' : '' }}
+                {{ ruta.estado === 'completada' ? 'bg-emerald-100 text-emerald-800' : '' }}
+                {{ ruta.estado === 'cancelada' ? 'bg-red-100 text-red-800' : '' }}">
+                {{ ruta.estado | titlecase }}
+              </span>
+            </div>
+          }
+        </div>
+      }
+    </div>
+  }
+
+  <!-- ==================== CONDUCTOR DASHBOARD ==================== -->
+  @if (esConductor()) {
+    @if (conductorLoading()) {
+      <div class="flex justify-center py-20">
+        <mat-spinner diameter="48"></mat-spinner>
+      </div>
+    } @else if (rutasConductor().length === 0) {
+      <div class="flex flex-col items-center justify-center bg-white rounded-xl p-6 shadow-sm border border-gray-100 py-16">
+        <div class="w-12 h-12 text-gray-300 mx-auto mb-4 flex items-center justify-center">
+          <mat-icon class="text-5xl">directions_bus</mat-icon>
+        </div>
+        <h3 class="text-base text-gray-500 mb-1">Sin rutas asignadas</h3>
+        <p class="text-sm text-gray-400">No tienes rutas programadas para hoy</p>
+      </div>
+    } @else {
+      <div class="space-y-4">
+        @for (ruta of rutasConductor(); track ruta.idRuta) {
+          <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+            <div class="mb-4 flex items-start justify-between">
+              <div class="flex items-center gap-4">
+                <div class="flex h-14 w-14 items-center justify-center rounded-xl bg-[#1A3A5C] text-lg font-bold text-white">
+                  {{ ruta.idRuta }}
+                </div>
+                <div>
+                  <h3 class="text-base font-medium text-[#1A3A5C]">Ruta #{{ ruta.idRuta }}</h3>
+                  <div class="flex items-center gap-3 text-sm text-gray-500">
+                    <span class="flex items-center gap-1">
+                      <mat-icon class="text-sm">directions_car</mat-icon>
+                      {{ ruta.placaVehiculo }}
+                    </span>
+                    <span class="flex items-center gap-1">
+                      <mat-icon class="text-sm">calendar_today</mat-icon>
+                      {{ ruta.fechaRuta | date:'dd/MM/yyyy' }}
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium capitalize
+                {{ ruta.estado === 'planificada' ? 'bg-gray-100 text-gray-600' : '' }}
+                {{ ruta.estado === 'en_curso' ? 'bg-orange-100 text-orange-800' : '' }}
+                {{ ruta.estado === 'completada' ? 'bg-emerald-100 text-emerald-800' : '' }}">
+                {{ ruta.estado | titlecase }}
+              </span>
+            </div>
+
+            <!-- Vehicle alerts -->
+            @if (alertasVehiculos().get(ruta.idVehiculo); as alertas) {
+              @if (alertas.length > 0) {
+                <div class="mb-4 rounded-xl border border-red-200 bg-red-50 p-4">
+                  <div class="flex items-center gap-2">
+                    <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-red-100">
+                      <mat-icon class="text-sm text-red-600">warning</mat-icon>
+                    </div>
+                    <p class="font-medium text-red-800">{{ alertas.length }} alerta(s) activa(s)</p>
+                  </div>
+                  <ul class="mt-2 space-y-1">
+                    @for (alerta of alertas; track alerta.idAlerta) {
+                      <li class="text-sm text-red-600">• {{ alerta.mensaje }}</li>
+                    }
+                  </ul>
+                </div>
+              }
+            }
+
+            <!-- Estado update buttons -->
+            <div class="flex items-center gap-2">
+              @if (ruta.estado === 'planificada') {
+                <button
+                  type="button"
+                  (click)="updateRutaEstado(ruta, 'en_curso')"
+                  class="bg-[#1A3A5C] text-white px-5 py-2.5 rounded-lg font-medium hover:bg-[#152E4A] transition-colors duration-200"
+                >
+                  <span class="flex items-center gap-2">
+                    <mat-icon class="text-sm">play_arrow</mat-icon>
+                    Iniciar Ruta
+                  </span>
+                </button>
+              }
+              @if (ruta.estado === 'en_curso') {
+                <button
+                  type="button"
+                  (click)="updateRutaEstado(ruta, 'completada')"
+                  class="bg-[#2E7D52] text-white px-5 py-2.5 rounded-lg font-medium hover:bg-[#256643] transition-colors duration-200"
+                >
+                  <span class="flex items-center gap-2">
+                    <mat-icon class="text-sm">check_circle</mat-icon>
+                    Completar Ruta
+                  </span>
+                </button>
+              }
+            </div>
+          </div>
+        }
+      </div>
+    }
+  }
+
+  <!-- ==================== CLIENTE DASHBOARD ==================== -->
+  @if (esCliente()) {
+    <!-- Crear nuevo pedido button -->
+    <div class="flex justify-end">
+      <button
+        type="button"
+        (click)="crearNuevoPedido()"
+        class="flex items-center gap-2 bg-[#1A3A5C] text-white px-5 py-2.5 rounded-lg font-medium hover:bg-[#152E4A] transition-colors duration-200"
+      >
+        <mat-icon class="text-lg">add_circle</mat-icon>
+        Crear Nuevo Pedido
+      </button>
+    </div>
+
+    @if (clienteLoading()) {
+      <div class="flex justify-center py-20">
+        <mat-spinner diameter="48"></mat-spinner>
+      </div>
+    } @else if (pedidosRecientes().length === 0) {
+      <div class="flex flex-col items-center justify-center bg-white rounded-xl p-6 shadow-sm border border-gray-100 py-16">
+        <div class="w-12 h-12 text-gray-300 mx-auto mb-4 flex items-center justify-center">
+          <mat-icon class="text-5xl">shopping_cart</mat-icon>
+        </div>
+        <h3 class="text-base text-gray-500 mb-1">Sin pedidos</h3>
+        <p class="text-sm text-gray-400">Aun no has realizado pedidos</p>
+        <button
+          type="button"
+          (click)="crearNuevoPedido()"
+          class="mt-4 bg-[#1A3A5C] text-white px-5 py-2.5 rounded-lg font-medium hover:bg-[#152E4A] transition-colors duration-200"
+        >
+          Crear tu primer pedido
+        </button>
+      </div>
+    } @else {
+      <div class="space-y-4">
+        @for (pedido of pedidosRecientes(); track pedido.idPedido) {
+          <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+            <div class="mb-4 flex items-start justify-between">
+              <div>
+                <div class="flex items-center gap-3">
+                  <h3 class="text-base font-medium text-[#1A3A5C]">Pedido #{{ pedido.idPedido }}</h3>
+                  <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium capitalize
+                    {{ pedido.estado === 'pendiente' ? 'bg-amber-100 text-amber-800' : '' }}
+                    {{ pedido.estado === 'confirmado' ? 'bg-blue-100 text-blue-800' : '' }}
+                    {{ pedido.estado === 'preparacion' ? 'bg-blue-100 text-blue-800' : '' }}
+                    {{ pedido.estado === 'en_ruta' ? 'bg-orange-100 text-orange-800' : '' }}
+                    {{ pedido.estado === 'entregado' ? 'bg-emerald-100 text-emerald-800' : '' }}
+                    {{ pedido.estado === 'fallido' ? 'bg-red-100 text-red-800' : '' }}">
+                    {{ pedido.estado | titlecase }}
+                  </span>
+                </div>
+                <p class="text-sm text-gray-500 mt-1">
+                  <mat-icon class="inline text-sm align-middle">calendar_today</mat-icon>
+                  {{ pedido.fechaPedido | date:'dd MMMM yyyy' }}
+                </p>
+              </div>
+              <p class="text-xl font-bold text-[#1A3A5C]">{{ pedido.total | currency:'COP':'symbol-narrow' }}</p>
+            </div>
+
+            <!-- Order status timeline -->
+            <div class="mt-6 rounded-xl bg-gray-50 p-4">
+              <div class="flex items-center justify-between">
+                @for (step of ['pendiente', 'confirmado', 'preparacion', 'en_ruta', 'entregado']; track step; let stepIdx = $index) {
+                  @if (stepIdx > 0) {
+                    <div class="h-1 flex-1 transition-colors duration-300"
+                      [ngClass]="getPedidoEstadoOrder(pedido.estado) >= stepIdx ? 'bg-[#2E7D52]' : 'bg-gray-200'"></div>
+                  }
+                  <div class="flex flex-col items-center gap-1">
+                    <div class="flex h-10 w-10 items-center justify-center rounded-full text-white transition-all duration-300"
+                      [ngClass]="getPedidoEstadoOrder(pedido.estado) >= stepIdx ? 'bg-[#2E7D52]' : 'bg-gray-200'">
+                      @if (getPedidoEstadoOrder(pedido.estado) >= stepIdx) {
+                        <mat-icon class="text-sm">check</mat-icon>
+                      } @else {
+                        <div class="h-2 w-2 rounded-full bg-gray-400"></div>
+                      }
+                    </div>
+                    <p class="text-xs font-medium capitalize"
+                      [ngClass]="getPedidoEstadoOrder(pedido.estado) >= stepIdx ? 'text-[#2E7D52]' : 'text-gray-400'">
+                      {{ step | titlecase }}
+                    </p>
+                  </div>
+                }
+              </div>
+            </div>
+          </div>
+        }
+      </div>
+    }
+  }
+</div>

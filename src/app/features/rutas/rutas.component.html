@@ -1,0 +1,233 @@
+<div class="space-y-5">
+  <!-- Header -->
+  <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div>
+      <h1 class="text-2xl font-semibold text-[#1A3A5C]">Rutas</h1>
+      <p class="text-base font-medium text-gray-600">{{ esConductor() ? 'Mis rutas asignadas' : 'Gestión de rutas' }}</p>
+    </div>
+    @if (esAdminOp()) {
+      <button
+        type="button"
+        (click)="openCreateModal()"
+        class="bg-[#1A3A5C] text-white px-5 py-2.5 rounded-lg font-medium hover:bg-[#152E4A] transition-colors duration-200 flex items-center gap-2"
+      >
+        <mat-icon class="text-sm">add_circle</mat-icon>
+        Planificar Ruta
+      </button>
+    }
+  </div>
+
+  @if (esAdminOp()) {
+    <!-- Date Picker -->
+    <div class="flex items-center gap-3">
+      <label class="text-sm font-medium text-gray-600">Fecha:</label>
+      <input
+        type="date"
+        [value]="fechaSeleccionada()"
+        (change)="onFechaChange()"
+        class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#1A3A5C] focus:border-transparent transition duration-150"
+      />
+    </div>
+  }
+
+  <!-- Loading State -->
+  @if (loading()) {
+    <div class="space-y-4">
+      @for (_ of [1, 2, 3]; track _) {
+        <div class="animate-pulse rounded-xl bg-white p-6 shadow-sm">
+          <div class="flex items-center gap-4">
+            <div class="h-4 w-32 rounded bg-gray-200"></div>
+            <div class="h-4 w-24 rounded bg-gray-200"></div>
+            <div class="h-6 w-20 rounded bg-gray-200"></div>
+          </div>
+        </div>
+      }
+    </div>
+  } @else if (rutas().length === 0) {
+    <!-- Empty State -->
+    <div class="flex flex-col items-center justify-center bg-white rounded-xl p-6 shadow-sm border border-gray-100 py-16">
+      <div class="w-12 h-12 text-gray-300 mx-auto mb-4 flex items-center justify-center">
+        <mat-icon class="text-5xl">directions_bus</mat-icon>
+      </div>
+      <h3 class="text-base text-gray-500 mb-1">No hay rutas</h3>
+      <p class="text-sm text-gray-400">
+        @if (esConductor()) {
+          No tienes rutas asignadas
+        } @else {
+          No se encontraron rutas para la fecha seleccionada
+        }
+      </p>
+    </div>
+  } @else {
+    <!-- Route Cards -->
+    <div class="space-y-4">
+      @for (ruta of rutas(); track ruta.idRuta) {
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-all duration-200">
+          <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div class="flex-1">
+              <div class="mb-2 flex items-center gap-3">
+                <h3 class="text-base font-medium text-[#1A3A5C]">Ruta #{{ ruta.idRuta }}</h3>
+                <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium capitalize
+                  {{ ruta.estado === 'planificada' ? 'bg-gray-100 text-gray-600' : '' }}
+                  {{ ruta.estado === 'en_curso' ? 'bg-orange-100 text-orange-800' : '' }}
+                  {{ ruta.estado === 'completada' ? 'bg-emerald-100 text-emerald-800' : '' }}
+                  {{ ruta.estado === 'cancelada' ? 'bg-red-100 text-red-800' : '' }}">
+                  {{ ruta.estado | titlecase }}
+                </span>
+              </div>
+              <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                <p class="text-sm text-gray-700">
+                  <span class="text-xs text-gray-500">Vehículo:</span> {{ ruta.placaVehiculo }}
+                </p>
+                <p class="text-sm text-gray-700">
+                  <span class="text-xs text-gray-500">Conductor:</span> {{ ruta.nombreConductor }}
+                </p>
+                <p class="text-sm text-gray-700">
+                  <span class="text-xs text-gray-500">Fecha:</span> {{ ruta.fechaRuta | date:'dd/MM/yyyy' }}
+                </p>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-2">
+              @if (getNextEstado(ruta.estado); as nextEstado) {
+                <button
+                  type="button"
+                  (click)="updateEstado(ruta, nextEstado)"
+                  class="bg-[#2E7D52] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#256643] transition-colors duration-200"
+                >
+                  Marcar {{ nextEstado | titlecase }}
+                </button>
+              }
+              @if (ruta.estado !== 'cancelada' && ruta.estado !== 'completada') {
+                <button
+                  type="button"
+                  (click)="updateEstado(ruta, 'cancelada')"
+                  class="bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-700 transition-colors duration-200"
+                >
+                  Cancelar
+                </button>
+              }
+            </div>
+          </div>
+        </div>
+      }
+    </div>
+  }
+</div>
+
+<!-- Modal: Planificar Ruta -->
+@if (showCreateModal()) {
+  <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" (click)="closeCreateModal()">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg mx-4 p-7" (click)="$event.stopPropagation()">
+      <div class="flex items-center justify-between mb-6">
+        <h2 class="text-xl font-semibold text-gray-800">Planificar Ruta</h2>
+        <button type="button" (click)="closeCreateModal()" class="text-gray-400 hover:text-gray-600">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+
+      @if (backendErrorBadge()) {
+        <div class="inline-flex w-full items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+          <mat-icon class="text-base">error</mat-icon>
+          <span>{{ backendErrorBadge() }}</span>
+        </div>
+      }
+
+      <form (submit)="submitCreate($event)" novalidate class="space-y-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-600 mb-1">Vehículo *</label>
+          <select
+            [value]="formIdVehiculo()"
+            (change)="onVehiculoChange($event)"
+            required
+            [disabled]="loadingVehiculos()"
+            class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#1A3A5C] focus:border-transparent transition duration-150 disabled:cursor-not-allowed disabled:bg-gray-100"
+          >
+            <option value="">
+              @if (loadingVehiculos()) {
+                Cargando vehículos...
+              } @else {
+                Seleccionar vehículo
+              }
+            </option>
+            @for (vehiculo of vehiculos(); track vehiculo.idVehiculo) {
+              <option [value]="vehiculo.idVehiculo">
+                {{ vehiculo.placa || vehiculo.nombre || ('Vehículo #' + vehiculo.idVehiculo) }}
+              </option>
+            }
+          </select>
+          @if (!loadingVehiculos() && vehiculos().length === 0) {
+            <p class="text-xs text-red-600 mt-1">No se pudieron cargar vehículos.</p>
+          }
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-600 mb-1">Conductor *</label>
+          <select
+            [value]="formIdConductor()"
+            (change)="onConductorChange($event)"
+            required
+            class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#1A3A5C] focus:border-transparent transition duration-150"
+          >
+            <option value="">Seleccionar conductor</option>
+            @for (conductor of conductores(); track conductor.idUsuario) {
+              <option [value]="conductor.idUsuario">{{ conductor.nombre }}</option>
+            }
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-600 mb-1">Fecha de Ruta *</label>
+          <input
+            type="date"
+            [value]="formFechaRuta()"
+            (change)="onFormFechaChange($event)"
+            required
+            class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#1A3A5C] focus:border-transparent transition duration-150"
+          />
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-600 mb-2">Pedidos a asignar *</label>
+          @if (pedidosSinRuta().length === 0) {
+            <p class="text-sm text-gray-500">No hay pedidos sin ruta disponibles</p>
+          } @else {
+            <div class="max-h-48 space-y-2 overflow-y-auto rounded-xl border border-gray-200 p-3">
+              @for (pedido of pedidosSinRuta(); track pedido.idPedido) {
+                <div class="flex cursor-pointer items-center gap-3 rounded-lg p-2 hover:bg-gray-50 transition-colors duration-150">
+                  <input
+                    type="checkbox"
+                    [checked]="formIdsPedidos().includes(pedido.idPedido)"
+                    (change)="togglePedido(pedido.idPedido)"
+                    class="h-4 w-4 rounded border-gray-300 text-[#1A3A5C] focus:ring-[#1A3A5C]"
+                  />
+                  <div class="flex-1">
+                    <p class="text-sm font-medium text-gray-800">#{{ pedido.idPedido }} - {{ pedido.razonSocialCliente }}</p>
+                    <p class="text-xs text-gray-500">{{ pedido.fechaEntregaReq | date:'dd/MM/yyyy' }}</p>
+                  </div>
+                </div>
+              }
+            </div>
+          }
+        </div>
+
+        <div class="flex justify-end gap-3 mt-6">
+          <button
+            type="button"
+            (click)="closeCreateModal()"
+            class="bg-white text-gray-700 border border-gray-300 px-5 py-2.5 rounded-lg font-medium hover:bg-gray-50 transition-colors"
+          >
+            Cancelar
+          </button>
+          <button
+            type="submit"
+            [disabled]="!isFormValid() || loadingVehiculos() || vehiculos().length === 0"
+            class="bg-[#1A3A5C] text-white px-5 py-2.5 rounded-lg font-medium hover:bg-[#152E4A] transition-colors duration-200 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Planificar Ruta
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+}

@@ -1,0 +1,83 @@
+{
+  "$schema": "./node_modules/@angular/service-worker/config/schema.json",
+  "index": "/index.html",
+  "assetGroups": [
+    {
+      "name": "app",
+      "installMode": "prefetch",
+      "resources": {
+        "files": [
+          "/favicon.ico",
+          "/index.csr.html",
+          "/index.html",
+          "/manifest.webmanifest",
+          "/*.css",
+          "/*.js"
+        ]
+      }
+    },
+    {
+      "name": "assets",
+      "installMode": "lazy",
+      "updateMode": "prefetch",
+      "resources": {
+        "files": ["/**/*.(svg|cur|jpg|jpeg|png|apng|webp|avif|gif|otf|ttf|woff|woff2)"]
+      }
+    }
+  ],
+  "dataGroups": [
+    {
+      "name": "auth-api",
+      "urls": [
+        "/api/v1/auth/**"
+      ],
+      "cacheConfig": {
+        "maxSize": 10,
+        "maxAge": "5m",
+        "timeout": "5s",
+        "strategy": "freshness"
+      }
+    },
+    {
+      "name": "master-data",
+      "urls": [
+        "/api/v1/proveedores/**",
+        "/api/v1/inventario/**",
+        "/api/v1/sensores/**",
+        "/api/v1/mantenimiento/**"
+      ],
+      "cacheConfig": {
+        "maxSize": 100,
+        "maxAge": "12h",
+        "timeout": "10s",
+        "strategy": "performance"
+      }
+    },
+    {
+      "name": "transactional-data",
+      "urls": [
+        "/api/v1/pedidos/**",
+        "/api/v1/facturacion/**",
+        "/api/v1/rutas/**"
+      ],
+      "cacheConfig": {
+        "maxSize": 50,
+        "maxAge": "30m",
+        "timeout": "8s",
+        "strategy": "freshness"
+      }
+    },
+    {
+      "name": "dashboard-stats",
+      "urls": [
+        "/api/v1/dashboard/**"
+      ],
+      "cacheConfig": {
+        "maxSize": 20,
+        "maxAge": "15m",
+        "timeout": "5s",
+        "strategy": "performance"
+      }
+    }
+  ]
+}
